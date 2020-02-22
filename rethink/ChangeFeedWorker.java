@@ -16,7 +16,6 @@
 
 package rethink;
 
-import com.rethinkdb.RethinkDB;
 import com.rethinkdb.gen.exc.ReqlOpFailedError;
 import com.rethinkdb.net.Connection;
 import com.rethinkdb.net.Cursor;
@@ -24,9 +23,12 @@ import rethink.annotations.RethinkObject;
 import rethink.utils.RethinkMapper;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.rethinkdb.RethinkDB.r;
 
 public final class ChangeFeedWorker<T> implements AutoCloseable {
 
@@ -42,27 +44,12 @@ public final class ChangeFeedWorker<T> implements AutoCloseable {
     ) throws NullPointerException {
         this(
             conn,
-            conn.db().orElseThrow(() -> new NullPointerException("No database is being used by the connection.")),
+            classType.getDeclaredAnnotation(RethinkObject.class).db(),
             classType.getDeclaredAnnotation(RethinkObject.class).table(),
             classType,
             listener,
-            false
-        );
-    }
-
-    public ChangeFeedWorker(
-        final Connection conn,
-        final String table,
-        final Class<T> classType,
-        final ChangeFeedListener<T> listener
-    ) throws NullPointerException {
-        this(
-            conn,
-            conn.db().orElseThrow(() -> new NullPointerException("No database is being used by the connection.")),
-            table,
-            classType,
-            listener,
-            false
+            false,
+            true
         );
     }
 
@@ -73,7 +60,7 @@ public final class ChangeFeedWorker<T> implements AutoCloseable {
         final Class<T> classType,
         final ChangeFeedListener<T> listener
     ) {
-        this(conn, db, table, classType, listener, false);
+        this(conn, db, table, classType, listener, false, true);
     }
 
     public ChangeFeedWorker(
@@ -82,9 +69,19 @@ public final class ChangeFeedWorker<T> implements AutoCloseable {
         final String table,
         final Class<T> classType,
         final ChangeFeedListener<T> listener,
-        final boolean stopOnTableDrop
+        final boolean stopOnTableDrop,
+        final boolean initRethinkOnNeed
     ) {
-        RethinkDB r = RethinkDB.r;
+        if (initRethinkOnNeed) {
+            List<String> databases = r.dbList().run(conn);
+            if (!databases.contains(db))
+                r.dbCreate(db).run(conn);
+
+            List<String> tables = r.db(db).tableList().run(conn);
+            if (!tables.contains(table))
+                r.db(db).tableCreate(table).run(conn);
+        }
+
         Cursor cursor = r
             .db(db)
             .table(table)

@@ -135,7 +135,7 @@ public final class RethinkMapper {
             if (castType.equals(CharSequence.class) || castType.equals(String.class))
                 return object.toString();
             if (castType.equals(boolean.class) || castType.equals(Boolean.class))
-                return ((Number) object).intValue() == 1 ? true : false;
+                return ((Number) object).intValue() != 0 ? true : false;
         }
         if (object instanceof Boolean) {
             if (castType.equals(CharSequence.class) || castType.equals(String.class))
@@ -173,5 +173,4 @@ public final class RethinkMapper {
         }
         return object;
     }
-
 }

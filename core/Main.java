@@ -16,35 +16,21 @@
 
 package core;
 
-import com.rethinkdb.RethinkDB;
 import com.rethinkdb.net.Connection;
 import rethink.ChangeFeedListener;
 import rethink.ChangeFeedWorker;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static com.rethinkdb.RethinkDB.r;
 
 public class Main {
 
     private static final RethinkDB r = RethinkDB.r;
     private static Connection conn;
 
-    private static void initRethinkDB() {
-        conn = r.connection().hostname("localhost").port(28015).connect();
-
-        List<String> databases = r.dbList().run(conn);
-        if (!databases.contains("test"))
-            r.dbCreate("test").run(conn);
-
-        conn.use("test");
-
-        List<String> tables = r.tableList().run(conn);
-        if (!tables.contains("users"))
-            r.tableCreate("users").run(conn);
-    }
-
     public static void main(String[] args) {
-        initRethinkDB();
+        conn = r.connection().hostname("localhost").port(28015).connect();
 
         ChangeFeedWorker<User> worker = new ChangeFeedWorker<>(
             conn,
